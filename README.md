@@ -5,10 +5,11 @@ Selective Few-Random-Shot Augmentation (SFRSA) is a two-stage text augmentation 
 1. Over-generate candidate minority-class texts with few-random-shot LLM prompting.
 2. Select a fixed-size subset that balances minority relevance and diversity.
 
-The package exposes two main functions:
+The package exposes three main workflows:
 
 - `select_augmented_texts`: select generated texts using `kmeans`, `dpp`, or `iu-dpp`.
 - `generate_few_random_shot`: call an LLM API to generate texts from random positive and negative examples.
+- `train_step0_utility_model` and `compute_utility_scores`: train a Step-0 classifier and score candidates for IU-DPP.
 
 ## Install
 
@@ -74,6 +75,34 @@ selected = select_augmented_texts(
 )
 ```
 
+## Step-0 Utility Scores
+
+IU-DPP uses utility scores that estimate whether a candidate is useful for the downstream classifier. The package includes a lightweight Step-0 utility model based on a class-weighted text classifier and first-order validation-gradient scoring.
+
+```python
+import pandas as pd
+from sfrsa import compute_utility_scores, train_step0_utility_model
+
+train = pd.read_csv("example_data_step0_training.csv")
+
+step0 = train_step0_utility_model(
+    train,
+    text_column="review2",
+    label_column="label",
+    positive_label=1,
+    negative_label=0,
+    validation_size=0.1,
+    random_state=42,
+)
+
+utility_scores = compute_utility_scores(
+    step0,
+    candidates=generated,
+    text_column="text",
+    candidate_label=1,
+)
+```
+
 ## Generate Few-Random-Shot Candidates
 
 Set `OPENAI_API_KEY` in your environment or pass a configured OpenAI client.
@@ -103,14 +132,3 @@ texts = generate_few_random_shot(
     ),
 )
 ```
-
-## Publishing
-
-This repository is ready for GitHub and PyPI after you choose the final project metadata in `pyproject.toml`.
-
-```bash
-python -m build
-twine upload dist/*
-```
-
-GitHub publishing requires creating a repository under your account and pushing this working tree.
