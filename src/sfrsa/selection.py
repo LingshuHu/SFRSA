@@ -6,7 +6,8 @@ from typing import Callable, Literal, Sequence
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
+
+from .embeddings import bert_embeddings
 
 SelectionMethod = Literal["kmeans", "cgc", "dpp", "iu-dpp", "iudpp"]
 
@@ -32,6 +33,10 @@ def select_augmented_texts(
     candidate_embeddings: np.ndarray | None = None,
     minority_embeddings: np.ndarray | None = None,
     embedding_fn: Callable[[Sequence[str]], np.ndarray] | None = None,
+    embedding_model_name: str = "bert-base-uncased",
+    embedding_max_length: int = 512,
+    embedding_batch_size: int = 8,
+    embedding_device: str | None = None,
     utility_scores: Sequence[float] | None = None,
     alpha: float = 1.0,
     beta: float = 1.0,
@@ -55,10 +60,14 @@ def select_augmented_texts(
     budget:
         Number of candidates to select.
     candidate_embeddings, minority_embeddings:
-        Optional precomputed embeddings. Use these for BERT or other encoders.
+        Optional precomputed embeddings. Use these to reuse BERT or other
+        encoder outputs.
     embedding_fn:
-        Callable that maps text sequences to a 2-D numpy array. If omitted, a
-        TF-IDF vectorizer is fit on candidate and minority texts.
+        Callable that maps text sequences to a 2-D numpy array. If omitted,
+        BERT embeddings are computed with ``embedding_model_name``.
+    embedding_model_name, embedding_max_length, embedding_batch_size, embedding_device:
+        BERT embedding settings used when ``embedding_fn`` and precomputed
+        embeddings are not supplied.
     utility_scores:
         Training-aware utility scores for IU-DPP, one per candidate.
     alpha, beta, gamma:
@@ -90,12 +99,17 @@ def select_augmented_texts(
     if needs_minority and minority_list is None and minority_embeddings is None:
         raise ValueError("minority_texts or minority_embeddings are required for this method")
 
+    minority_for_embeddings = minority_list if needs_minority else None
     cand_emb, min_emb = _resolve_embeddings(
         candidate_texts,
-        minority_list,
+        minority_for_embeddings,
         candidate_embeddings,
         minority_embeddings,
         embedding_fn,
+        embedding_model_name,
+        embedding_max_length,
+        embedding_batch_size,
+        embedding_device,
     )
 
     if normalized_method == "kmeans":
@@ -154,6 +168,10 @@ def _resolve_embeddings(
     candidate_embeddings: np.ndarray | None,
     minority_embeddings: np.ndarray | None,
     embedding_fn: Callable[[Sequence[str]], np.ndarray] | None,
+    embedding_model_name: str,
+    embedding_max_length: int,
+    embedding_batch_size: int,
+    embedding_device: str | None,
 ) -> tuple[np.ndarray, np.ndarray | None]:
     if candidate_embeddings is not None:
         cand = np.asarray(candidate_embeddings, dtype=np.float64)
@@ -177,17 +195,19 @@ def _resolve_embeddings(
         min_emb = None if minority_texts is None else np.asarray(embedding_fn(minority_texts), dtype=np.float64)
         return cand, min_emb
 
+    embedder = lambda texts: bert_embeddings(
+        texts,
+        model_name=embedding_model_name,
+        max_length=embedding_max_length,
+        batch_size=embedding_batch_size,
+        device=embedding_device,
+    )
     if minority_texts is None:
-        cand = _tfidf_embeddings(candidate_texts, [])
+        cand = embedder(candidate_texts)
         return cand, None
     all_texts = candidate_texts + minority_texts
-    all_emb = _tfidf_embeddings(all_texts, [])
+    all_emb = embedder(all_texts)
     return all_emb[: len(candidate_texts)], all_emb[len(candidate_texts) :]
-
-
-def _tfidf_embeddings(texts: Sequence[str], _: Sequence[str]) -> np.ndarray:
-    vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1, 2), lowercase=True)
-    return vectorizer.fit_transform(texts).toarray()
 
 
 def _l2_normalize(x: np.ndarray, eps: float = 1e-12) -> np.ndarray:

@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from sfrsa import compute_utility_scores, select_augmented_texts, train_step0_utility_model
@@ -21,6 +22,7 @@ def test_step0_utility_scores_with_example_data():
 
     selected = select_augmented_texts(
         candidates["review2"].tolist(),
+        candidate_embeddings=np.eye(len(candidates)),
         method="iu-dpp",
         budget=2,
         utility_scores=scores,

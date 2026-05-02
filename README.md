@@ -39,6 +39,7 @@ selected = select_augmented_texts(
     method="dpp",
     budget=20,
     text_column="text",
+    embedding_model_name="bert-base-uncased",
     alpha=1.0,
     gamma=2.0,
     random_state=42,
@@ -47,7 +48,7 @@ selected = select_augmented_texts(
 print(selected.head())
 ```
 
-If you already computed BERT or sentence-transformer embeddings, pass them directly:
+By default, selection computes BERT embeddings using the same representation as the original SFRSA notebooks: sum the last four BERT hidden layers and average over tokens. If you already computed BERT or sentence-transformer embeddings, pass them directly:
 
 ```python
 selected = select_augmented_texts(

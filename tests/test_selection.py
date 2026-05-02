@@ -12,8 +12,17 @@ def test_select_dpp_from_dataframe():
         }
     )
     minority = pd.DataFrame({"text": ["good story", "great film"]})
+    cand_emb = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.8, 0.2]])
+    min_emb = np.array([[1.0, 0.0], [0.9, 0.1]])
 
-    selected = select_augmented_texts(candidates, minority, method="dpp", budget=2)
+    selected = select_augmented_texts(
+        candidates,
+        minority,
+        candidate_embeddings=cand_emb,
+        minority_embeddings=min_emb,
+        method="dpp",
+        budget=2,
+    )
 
     assert isinstance(selected, pd.DataFrame)
     assert len(selected) == 2
