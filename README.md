@@ -17,12 +17,6 @@ The package exposes three main workflows:
 pip install sfrsa
 ```
 
-For OpenAI generation support:
-
-```bash
-pip install "sfrsa[llm]"
-```
-
 ## Select Generated Texts
 
 ```python
