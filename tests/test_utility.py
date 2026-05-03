@@ -28,3 +28,18 @@ def test_step0_utility_scores_with_example_data():
         utility_scores=scores,
     )
     assert len(selected) == 2
+
+
+def test_step0_rejects_unknown_model_type():
+    data = pd.read_csv("example_data_step0_training.csv")
+    try:
+        train_step0_utility_model(
+            data,
+            model_type="svm",
+            text_column="review2",
+            label_column="label",
+        )
+    except ValueError as exc:
+        assert "model_type" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")

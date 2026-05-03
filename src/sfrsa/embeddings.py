@@ -6,7 +6,7 @@ import numpy as np
 
 
 def bert_text_preparation(text: str, tokenizer):
-    """Prepare one text for BERT, following the original SFRSA notebooks."""
+    """Prepare one text for BERT tokenization."""
 
     marked_text = "[CLS] " + str(text) + " [SEP]"
     tokenized_text = tokenizer.tokenize(marked_text)
@@ -51,9 +51,8 @@ def bert_embeddings(
 ) -> np.ndarray:
     """Embed texts with BERT using the SFRSA last-four-layers mean strategy.
 
-    The original notebooks embed each text by summing BERT's last four hidden
-    layers and averaging over tokens. This batched implementation preserves that
-    representation while using tokenizer padding/truncation for package use.
+    Each text is represented by summing BERT's last four hidden layers and
+    averaging over non-padding tokens.
     """
 
     try:
